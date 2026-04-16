@@ -1,0 +1,181 @@
+/* ============================================================
+   SkillBridge – Global Styles
+   Purple Neon / Magenta-Purple Dark Theme
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* ── Custom Theme Layer ────────────────────────────────────── */
+@theme {
+  /* Purple-neon colour palette */
+  --color-primary: #a855f7;
+  --color-primary-light: #c084fc;
+  --color-primary-dark: #7c3aed;
+  --color-secondary: #ec4899;
+  --color-accent: #f472b6;
+  --color-surface: rgba(15, 5, 30, 0.65);
+  --color-surface-light: rgba(30, 15, 55, 0.55);
+  --color-border: rgba(168, 85, 247, 0.18);
+  --color-text: #f0e6ff;
+  --color-text-muted: #a78bca;
+  --color-dark: #050010;
+
+  /* Typography */
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Glassmorphism blur */
+  --blur-glass: 18px;
+}
+
+
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: #050010;
+    color: var(--color-text);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0015;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a855f7, #ec4899);
+  border-radius: 50px;
+}
+
+/* ── Glassmorphism utility ─────────────────────────────────── */
+.glass {
+  background: var(--color-surface);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid var(--color-border);
+}
+
+.glass-light {
+  background: var(--color-surface-light);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(168, 85, 247, 0.12);
+}
+
+/* ── Glow effects ──────────────────────────────────────────── */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3),
+              0 0 60px rgba(168, 85, 247, 0.1);
+}
+
+.glow-text {
+  text-shadow: 0 0 40px rgba(168, 85, 247, 0.5),
+               0 0 80px rgba(168, 85, 247, 0.15);
+}
+
+.glow-border {
+  box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.07),
+              0 0 15px rgba(168, 85, 247, 0.12);
+}
+
+/* ── Gradient text utility ─────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #c084fc, #a855f7, #ec4899, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #c084fc 40%, #a855f7 60%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Animated gradient background ──────────────────────────── */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animated-gradient {
+  background: linear-gradient(270deg, #7c3aed, #a855f7, #ec4899, #c084fc);
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* ── Pulse glow animation ──────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4),
+                0 0 60px rgba(168, 85, 247, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.6),
+                0 0 90px rgba(168, 85, 247, 0.2);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ── Float animation ───────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ── Neon line ─────────────────────────────────────────────── */
+.neon-line {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #a855f7, #ec4899, transparent);
+  border-radius: 50px;
+}
+
+/* ── Section spacing ───────────────────────────────────────── */
+.section-padding {
+  padding: 6rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding: 8rem 2rem;
+  }
+}
+
+/* ── Input focus glow ──────────────────────────────────────── */
+.input-glow:focus {
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.35),
+              0 0 20px rgba(168, 85, 247, 0.15);
+}
+
+/* Floating label animation */
+.floating-label {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Hide 3D canvas on small screens for performance ──────── */
+@media (max-width: 640px) {
+  .three-canvas-wrapper {
+    display: none;
+  }
+}
