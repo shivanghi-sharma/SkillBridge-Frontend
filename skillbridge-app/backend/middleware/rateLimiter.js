@@ -15,7 +15,7 @@ export const apiLimiter = rateLimit({
 // Auth endpoints rate limiter (login, register)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

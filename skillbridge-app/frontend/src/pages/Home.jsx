@@ -4,8 +4,9 @@
    Sections: Hero, Stats, Featured Skills, How It Works,
    Testimonials. All sections use scroll-triggered animations.
    ============================================================ */
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition';
 import SectionTitle from '../components/SectionTitle';
 import GlassCard from '../components/GlassCard';
@@ -76,13 +77,15 @@ const HeroSection = () => (
         transition={{ delay: 0.8 }}
         className="flex flex-col sm:flex-row items-center justify-center gap-4"
       >
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(168,85,247,0.4)' }}
-          whileTap={{ scale: 0.95 }}
-          className="px-8 py-3.5 rounded-full animated-gradient text-white font-semibold text-sm shadow-lg shadow-purple-500/25 cursor-pointer"
-        >
-          Start Exchanging — It's Free
-        </motion.button>
+        <Link to="/explore">
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(168,85,247,0.4)' }}
+            whileTap={{ scale: 0.95 }}
+            className="px-8 py-3.5 rounded-full animated-gradient text-white font-semibold text-sm shadow-lg shadow-purple-500/25 cursor-pointer"
+          >
+            Start Exchanging — It's Free
+          </motion.button>
+        </Link>
 
         <motion.div
           whileHover={{ scale: 1.05 }}
@@ -156,51 +159,104 @@ const StatsSection = () => (
 );
 
 /* ── Featured Skills ────────────────────────────────────────── */
-const FeaturedSkillsSection = () => (
-  <section className="section-padding">
-    <SectionTitle title="Featured Skills" subtitle="Explore" />
+const FeaturedSkillsSection = () => {
+  const [skills, setSkills] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-    <motion.div
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.1 }}
-      variants={staggerContainer}
-      className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-    >
-      {featuredSkills.map((skill, i) => (
-        <GlassCard key={skill.id} delay={i * 0.1}>
-          {/* Icon badge */}
-          <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl mb-4"
-            style={{ background: `${skill.color}18` }}
-          >
-            {skill.icon}
-          </div>
+  useEffect(() => {
+    fetch('/api/skills?limit=6')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data && data.data.length > 0) {
+          setSkills(data.data.slice(0, 6));
+        } else {
+          // Fallback to local mockData when DB is empty
+          setSkills(featuredSkills);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fallback to local mockData on network error
+        setSkills(featuredSkills);
+        setLoading(false);
+      });
+  }, []);
 
-          <h3 className="text-lg font-bold text-white mb-2 font-[var(--font-heading)]">
-            {skill.title}
-          </h3>
-          <p className="text-gray-400 text-sm leading-relaxed mb-4">
-            {skill.description}
-          </p>
+  return (
+    <section className="section-padding">
+      <SectionTitle title="Featured Skills" subtitle="Explore" />
 
-          {/* Learner count + CTA */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-purple-400">
-              {formatNumber(skill.learners)} learners
-            </span>
-            <motion.span
-              whileHover={{ x: 4 }}
-              className="text-purple-300 text-sm cursor-pointer"
-            >
-              Explore →
-            </motion.span>
-          </div>
-        </GlassCard>
-      ))}
-    </motion.div>
-  </section>
-);
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+        </div>
+      ) : (
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.1 }}
+          variants={staggerContainer}
+          className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {skills.map((skill, i) => (
+            <GlassCard key={skill._id || skill.id} delay={i * 0.1}>
+              {/* Icon badge */}
+              <div
+                className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl mb-4"
+                style={{ background: `${skill.color || '#8b5cf6'}18` }}
+              >
+                {skill.icon || '🚀'}
+              </div>
+
+              <h3 className="text-lg font-bold text-white mb-2 font-[var(--font-heading)]">
+                {skill.title}
+              </h3>
+              <p className="text-gray-400 text-sm leading-relaxed mb-4 line-clamp-2">
+                {skill.description}
+              </p>
+
+              {/* Tags or learner count */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {skill.tags ? (
+                  skill.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-purple-500/10 text-purple-300">
+                      {tag}
+                    </span>
+                  ))
+                ) : skill.learners ? (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-purple-500/10 text-purple-300">
+                    {formatNumber(skill.learners)} learners
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Price or CTA */}
+              <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                <span className="text-sm font-bold text-white">
+                  {skill.price ? (
+                    <>₹{skill.price}<span className="text-xs text-gray-500 font-normal">/session</span></>
+                  ) : skill.learners ? (
+                    <>{formatNumber(skill.learners)} <span className="text-xs text-gray-500 font-normal">learners</span></>
+                  ) : (
+                    'Free'
+                  )}
+                </span>
+                <motion.button
+                  onClick={() => navigate('/explore')}
+                  whileHover={{ x: 4 }}
+                  className="text-purple-300 text-sm cursor-pointer"
+                >
+                  Explore →
+                </motion.button>
+              </div>
+            </GlassCard>
+          ))}
+        </motion.div>
+      )}
+    </section>
+  );
+};
 
 /* ── How It Works ───────────────────────────────────────────── */
 const HowItWorksSection = () => (
@@ -303,13 +359,15 @@ const CTASection = () => (
         <p className="text-gray-400 text-sm max-w-lg mx-auto mb-8">
           Join thousands of learners and makers who are exchanging skills, building portfolios, and shaping their futures — together.
         </p>
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(168,85,247,0.4)' }}
-          whileTap={{ scale: 0.95 }}
-          className="px-10 py-4 rounded-full animated-gradient text-white font-semibold shadow-lg shadow-purple-500/25 cursor-pointer"
-        >
-          Get Started for Free 🚀
-        </motion.button>
+        <Link to="/explore">
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(168,85,247,0.4)' }}
+            whileTap={{ scale: 0.95 }}
+            className="px-10 py-4 rounded-full animated-gradient text-white font-semibold shadow-lg shadow-purple-500/25 cursor-pointer"
+          >
+            Get Started for Free 🚀
+          </motion.button>
+        </Link>
       </div>
     </motion.div>
   </section>

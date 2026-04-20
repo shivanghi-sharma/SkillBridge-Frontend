@@ -7,6 +7,7 @@
 // ── Navigation links ──────────────────────────────────────── */
 export const navLinks = [
   { name: 'Home', path: '/' },
+  { name: 'Explore', path: '/explore' },
   { name: 'About', path: '/about' },
   { name: 'Contact', path: '/contact' },
 ];
@@ -223,3 +224,57 @@ export const footerLinks = {
     { name: 'Cookie Policy', href: '#' },
   ],
 };
+
+// ── Sellers for Explore page ──────────────────────────────── */
+export const sellers = [
+  { id: 1, name: 'Arjun Sharma', avatar: 'AS', skill: 'React + Node.js', rating: 4.9, sessions: 128, price: 299, tags: ['Frontend', 'Backend', 'JavaScript'], available: true, bio: '3rd year CS @ IIT Delhi. MERN specialist.' },
+  { id: 2, name: 'Priya Nair', avatar: 'PN', skill: 'UI/UX Design', rating: 4.8, sessions: 94, price: 399, tags: ['Figma', 'Wireframes', 'Prototyping'], available: true, bio: 'Product designer with 2yr internship exp.' },
+  { id: 3, name: 'Rohan Mehta', avatar: 'RM', skill: 'Python & ML', rating: 4.7, sessions: 67, price: 499, tags: ['Python', 'ML', 'Data Science'], available: false, bio: 'Final year at BITS Pilani, ML researcher.' },
+  { id: 4, name: 'Sneha Kapoor', avatar: 'SK', skill: 'Resume & LinkedIn', rating: 5.0, sessions: 211, price: 199, tags: ['Resume', 'LinkedIn', 'Career'], available: true, bio: 'Placed at Google. Helped 200+ students.' },
+  { id: 5, name: 'Vikram Das', avatar: 'VD', skill: 'DSA Mentoring', rating: 4.9, sessions: 156, price: 349, tags: ['DSA', 'LeetCode', 'Interviews'], available: true, bio: 'SDE-2 at Amazon. 500+ LeetCode problems.' },
+  { id: 6, name: 'Meera Iyer', avatar: 'MI', skill: 'Logo & Branding', rating: 4.6, sessions: 43, price: 249, tags: ['Logo', 'Branding', 'Illustrator'], available: true, bio: 'Freelance designer, worked with 30+ brands.' },
+];
+
+// ── Time slots for booking ────────────────────────────────── */
+export const timeSlots = [
+  '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+  '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM',
+  '7:00 PM', '8:00 PM',
+];
+
+// ── Chat mock messages ────────────────────────────────────── */
+export const chatMessages = [
+  { id: 1, sender: 'seller', text: 'Hi! I saw your booking for React debugging. What\'s the issue exactly?', time: '7:02 PM' },
+  { id: 2, sender: 'buyer', text: 'Hey! My useEffect hook is running infinitely. I think it\'s a dependency array issue.', time: '7:03 PM' },
+  { id: 3, sender: 'seller', text: 'Ah classic! Share your code snippet and I\'ll help you fix it before our session.', time: '7:04 PM' },
+];
+
+// ── Notifications ─────────────────────────────────────────── */
+export const notifications = [
+  { id: 1, type: 'booking', message: 'Arjun Sharma confirmed your session at 8 PM today!', time: '2h ago', read: false },
+  { id: 2, type: 'payment', message: '₹299 held in escrow for your React session.', time: '2h ago', read: false },
+  { id: 3, type: 'review', message: 'Priya gave you a 5★ review! Your rank improved.', time: '1d ago', read: true },
+  { id: 4, type: 'chat', message: 'New message from Rohan Mehta about your Python session.', time: '3d ago', read: true },
+];
+
+// ── Dashboard stats ───────────────────────────────────────── */
+export const buyerStats = [
+  { label: 'Sessions Booked', value: 7, icon: '📅' },
+  { label: 'Skills Learned', value: 4, icon: '🎯' },
+  { label: 'Total Spent', value: '₹2,100', icon: '💰' },
+  { label: 'Avg Rating Given', value: '4.8★', icon: '⭐' },
+];
+
+export const sellerStats = [
+  { label: 'Sessions Done', value: 23, icon: '✅' },
+  { label: 'Total Earned', value: '₹6,890', icon: '💰' },
+  { label: 'Avg Rating', value: '4.9★', icon: '⭐' },
+  { label: 'Repeat Clients', value: 8, icon: '🔄' },
+];
+
+// ── My sessions ───────────────────────────────────────────── */
+export const mySessions = [
+  { id: 1, seller: 'Arjun Sharma', skill: 'React Debugging', date: 'Today, 8 PM', status: 'upcoming', price: 299, rated: false },
+  { id: 2, seller: 'Priya Nair', skill: 'UI/UX Wireframes', date: 'Yesterday, 6 PM', status: 'completed', price: 399, rated: true, rating: 5 },
+  { id: 3, seller: 'Sneha Kapoor', skill: 'Resume Review', date: '3 days ago', status: 'completed', price: 199, rated: false },
+];
