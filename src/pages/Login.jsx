@@ -20,7 +20,7 @@ const Login = () => {
 
     try {
       await login(formData.email, formData.password)
-      navigate('/home')
+      navigate('/profile')
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong')
     } finally {

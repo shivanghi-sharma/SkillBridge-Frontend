@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
@@ -11,13 +11,50 @@ const Profile = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
   const [formData, setFormData] = useState({
     name: user?.name || '',
     bio: user?.bio || '',
-    skills: user?.skills?.join(', ') || '',  //convert array into string
+    skills: user?.skills?.join(', ') || '',
     hourlyRate: user?.hourlyRate || ''
   })
+  const [slots, setSlots] = useState([])
+  const [slotForm, setSlotForm] = useState({ day: 'Monday', startTime: '', endTime: '' })
+  const [slotLoading, setSlotLoading] = useState(false)
+  const [slotError, setSlotError] = useState('')
+
+  useEffect(() => {
+  if (user?.role === 'seller') {
+    api.get(`/availability/${user._id}`)
+      .then(res => setSlots(res.data))
+      .catch(err => console.error(err))
+  }
+}, [user])
+
+const handleAddSlot = async () => {
+  if (!slotForm.startTime || !slotForm.endTime) {
+    return setSlotError('Please fill in both times')
+  }
+  setSlotLoading(true)
+  setSlotError('')
+  try {
+    const res = await api.post('/availability', slotForm)
+    setSlots([...slots, res.data.slot])
+    setSlotForm({ day: 'Monday', startTime: '', endTime: '' })
+  } catch (err) {
+    setSlotError(err.response?.data?.message || 'Something went wrong')
+  } finally {
+    setSlotLoading(false)
+  }
+}
+
+const handleDeleteSlot = async (slotId) => {
+  try {
+    await api.delete(`/availability/${slotId}`)
+    setSlots(slots.filter(s => s._id !== slotId))
+  } catch (err) {
+    console.error(err)
+  }
+}
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -30,14 +67,14 @@ const Profile = () => {
     setSuccess('')
 
     try {
-      // Convert skills string "React, Node, CSS" → ["React", "Node", "CSS"] bcz backend expects array and input gives string
+      // Convert skills string "React, Node, CSS" → ["React", "Node", "CSS"]
       const updatedData = {
         ...formData,
         skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean)
       }
 
-      const res = await api.put('/users/profile', updatedData) //axios send request using URL /users/profile , method PUT(update)
-      setUser(res.data.user) //update global user
+      const res = await api.put('/users/profile', updatedData)
+      setUser(res.data.user)
       setSuccess('Profile updated successfully!')
       setEditing(false)
     } catch (err) {
@@ -198,6 +235,81 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Availability Section — sellers only */}
+{user?.role === 'seller' && (
+  <div className="bg-gray-900 rounded-2xl p-6 mt-6">
+    <h2 className="text-white text-xl font-semibold mb-4">My Availability</h2>
+
+    {/* Add Slot Form */}
+    <div className="space-y-3 mb-6">
+      <div className="grid grid-cols-3 gap-3">
+        <select
+          value={slotForm.day}
+          onChange={(e) => setSlotForm({ ...slotForm, day: e.target.value })}
+          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        >
+          {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+        <input
+          type="time"
+          value={slotForm.startTime}
+          onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
+          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+        <input
+          type="time"
+          value={slotForm.endTime}
+          onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
+          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+      </div>
+
+      {slotError && (
+        <p className="text-red-400 text-sm">{slotError}</p>
+      )}
+
+      <button
+        onClick={handleAddSlot}
+        disabled={slotLoading}
+        className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
+      >
+        {slotLoading ? 'Adding...' : '+ Add Slot'}
+      </button>
+    </div>
+
+    {/* Existing Slots */}
+    {slots.length === 0 ? (
+      <p className="text-gray-400 text-sm">No slots added yet</p>
+    ) : (
+      <div className="space-y-2">
+        {slots.map(slot => (
+          <div key={slot._id} className="flex items-center justify-between bg-gray-800 px-4 py-3 rounded-lg">
+            <div>
+              <span className="text-white text-sm font-medium">{slot.day}</span>
+              <span className="text-gray-400 text-sm ml-3">{slot.startTime} - {slot.endTime}</span>
+              {slot.isBooked && (
+                <span className="ml-3 text-xs bg-yellow-400/10 text-yellow-400 px-2 py-1 rounded-full">
+                  Booked
+                </span>
+              )}
+            </div>
+            {!slot.isBooked && (
+              <button
+                onClick={() => handleDeleteSlot(slot._id)}
+                className="text-red-400 hover:text-red-300 text-sm transition"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
     </div>
   )
 }

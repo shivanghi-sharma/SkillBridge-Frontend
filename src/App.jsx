@@ -1,28 +1,44 @@
-import {Routes , Route } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
-import Login from './pages/Login'
-import Profile from './pages/Profile'
-import Register from './pages/Register'
+import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
-import BuyerHome from './pages/BuyerHome'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Profile from './pages/Profile'
+import Browse from './pages/Browse'
+import SellerProfile from './pages/SellerProfile'
+import Dashboard from './pages/Dashboard'
 
 function App() {
   return (
+    <>
+    <Navbar/>
     <Routes>
-      <Route path="/" element={<Landing/>}/>
-      <Route path="/login" element={<Login/>}/>
-      <Route path="/register" element={<Register/>}/>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/profile" element={
-         <ProtectedRoute>
-          <Profile/>
-         </ProtectedRoute>
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      } />
+      <Route path="/browse" element={
+        <ProtectedRoute>
+          <Browse/>
+        </ProtectedRoute>
       }/>
-      <Route path="/home" element={
-         <ProtectedRoute>
-          <BuyerHome/>
-         </ProtectedRoute>
+      <Route path="/sellers/:id" element={
+        <ProtectedRoute>
+          <SellerProfile/>
+        </ProtectedRoute>
+      }/>
+      <Route path ="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard/>
+        </ProtectedRoute>
       }/>
     </Routes>
+    </>
   )
 }
 
