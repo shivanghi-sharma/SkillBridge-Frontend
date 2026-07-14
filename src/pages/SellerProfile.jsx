@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { openRazorpayCheckout } from '../utils/razorpay'
 import api from '../api/axios'
 
 const SellerProfile = () => {
@@ -16,6 +17,9 @@ const SellerProfile = () => {
   const [bookingLoading, setBookingLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [paymentLoading, setPaymentLoading] = useState(false)
+const [paymentSuccess, setPaymentSuccess] = useState('')
+const [paymentError, setPaymentError] = useState('')
 
 
 //   URL has seller ID (e.g. /seller/abc123)
@@ -47,29 +51,69 @@ const SellerProfile = () => {
     fetchAll()
   }, [id])
 
-  const handleBooking = async () => {
-    if (!selectedSlot) return setError('Please select a slot first')
-    setBookingLoading(true)
-    setError('')
-    setSuccess('')
 
-    try {
-      await api.post('/bookings', {
-        sellerId: id,
-        slotId: selectedSlot,
-        message: bookingMessage
-      })
-      setSuccess('Session booked successfully!')
-      // Remove booked slot from UI
-      setSlots(slots.filter(s => s._id !== selectedSlot))
-      setSelectedSlot(null)
-      setBookingMessage('')
-    } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong')
-    } finally {
-      setBookingLoading(false)
-    }
+const handleBooking = async () => {
+  if (!selectedSlot) return setError('Please select a slot first')
+  setBookingLoading(true)
+  setError('')
+  setSuccess('')
+
+  try {
+    // Step 1 — Create booking
+    const bookingRes = await api.post('/bookings', {
+      sellerId: id,
+      slotId: selectedSlot,
+      message: bookingMessage
+    })
+
+    const bookingId = bookingRes.data.booking._id
+
+    // Step 2 — Create Razorpay order
+    const orderRes = await api.post('/payments/create-order', { bookingId })
+
+    const { orderId, amount, currency } = orderRes.data
+
+    setBookingLoading(false)
+
+    // Step 3 — Open Razorpay checkout popup
+    openRazorpayCheckout({
+      orderId,
+      amount,
+      currency,
+      name: user?.name,
+      description: `Session with ${seller.name}`,
+      onSuccess: async ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+        try {
+          setPaymentLoading(true)
+
+          // Step 4 — Send to backend for verification
+          await api.post('/payments/verify', {
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature,
+            bookingId
+          })
+
+          setPaymentSuccess('Payment successful! Your session is confirmed.')
+          setSlots(slots.filter(s => s._id !== selectedSlot))
+          setSelectedSlot(null)
+          setBookingMessage('')
+        } catch (err) {
+          setPaymentError('Payment verification failed. Contact support.')
+        } finally {
+          setPaymentLoading(false)
+        }
+      },
+      onFailure: (msg) => {
+        setError(msg || 'Payment failed')
+      }
+    })
+
+  } catch (err) {
+    setError(err.response?.data?.message || 'Something went wrong')
+    setBookingLoading(false)
   }
+}
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -128,11 +172,26 @@ const SellerProfile = () => {
                 {success}
               </div>
             )}
+
             {error && (
               <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
                 {error}
               </div>
             )}
+
+            {paymentSuccess && (
+            <div className="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-lg mb-4 text-sm">
+                    {paymentSuccess}
+            </div>
+            )}
+            {paymentError && (
+           <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
+           {paymentError}
+           </div>
+           )}
+           {paymentLoading && (
+          <p className="text-blue-400 text-sm mb-4">Verifying payment...</p>
+           )}
 
             {slots.length === 0 ? (
               <p className="text-gray-400">No available slots right now</p>

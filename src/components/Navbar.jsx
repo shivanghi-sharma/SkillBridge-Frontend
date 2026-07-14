@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
 
   const handleLogout = async () => {
     await logout()
@@ -32,18 +34,34 @@ const Navbar = () => {
           </Link>
 
           {user ? (
-            <button
-              onClick={handleLogout}
-              className="text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-lg transition"
-            >
-              Logout
-            </button>
+            <>
+              <button
+                onClick={handleLogout}
+                className="text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-lg transition"
+              >
+                Logout
+              </button>
+
+              <button
+                onClick={toggleTheme}
+                className="text-gray-400 hover:text-white transition text-sm"
+              >
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </button>
+            </>
+
           ) : (
             <Link
               to="/login"
               className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
             >
               Login
+            </Link>
+          )}
+
+          {user?.role === 'admin' && (
+            <Link to="/admin" className="text-gray-400 hover:text-white text-sm transition">
+              Admin
             </Link>
           )}
         </div>

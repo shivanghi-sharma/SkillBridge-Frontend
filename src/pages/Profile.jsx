@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
+import toast from 'react-hot-toast'
 
 const Profile = () => {
   const { user, setUser, logout } = useAuth()
@@ -21,40 +22,41 @@ const Profile = () => {
   const [slotForm, setSlotForm] = useState({ day: 'Monday', startTime: '', endTime: '' })
   const [slotLoading, setSlotLoading] = useState(false)
   const [slotError, setSlotError] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-  if (user?.role === 'seller') {
-    api.get(`/availability/${user._id}`)
-      .then(res => setSlots(res.data))
-      .catch(err => console.error(err))
-  }
-}, [user])
+    if (user?.role === 'seller') {
+      api.get(`/availability/${user._id}`)
+        .then(res => setSlots(res.data))
+        .catch(err => console.error(err))
+    }
+  }, [user])
 
-const handleAddSlot = async () => {
-  if (!slotForm.startTime || !slotForm.endTime) {
-    return setSlotError('Please fill in both times')
+  const handleAddSlot = async () => {
+    if (!slotForm.startTime || !slotForm.endTime) {
+      return setSlotError('Please fill in both times')
+    }
+    setSlotLoading(true)
+    setSlotError('')
+    try {
+      const res = await api.post('/availability', slotForm)
+      setSlots([...slots, res.data.slot])
+      setSlotForm({ day: 'Monday', startTime: '', endTime: '' })
+    } catch (err) {
+      setSlotError(err.response?.data?.message || 'Something went wrong')
+    } finally {
+      setSlotLoading(false)
+    }
   }
-  setSlotLoading(true)
-  setSlotError('')
-  try {
-    const res = await api.post('/availability', slotForm)
-    setSlots([...slots, res.data.slot])
-    setSlotForm({ day: 'Monday', startTime: '', endTime: '' })
-  } catch (err) {
-    setSlotError(err.response?.data?.message || 'Something went wrong')
-  } finally {
-    setSlotLoading(false)
-  }
-}
 
-const handleDeleteSlot = async (slotId) => {
-  try {
-    await api.delete(`/availability/${slotId}`)
-    setSlots(slots.filter(s => s._id !== slotId))
-  } catch (err) {
-    console.error(err)
+  const handleDeleteSlot = async (slotId) => {
+    try {
+      await api.delete(`/availability/${slotId}`)
+      setSlots(slots.filter(s => s._id !== slotId))
+    } catch (err) {
+      console.error(err)
+    }
   }
-}
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -63,8 +65,6 @@ const handleDeleteSlot = async (slotId) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     try {
       // Convert skills string "React, Node, CSS" → ["React", "Node", "CSS"]
@@ -75,10 +75,10 @@ const handleDeleteSlot = async (slotId) => {
 
       const res = await api.put('/users/profile', updatedData)
       setUser(res.data.user)
-      setSuccess('Profile updated successfully!')
+      toast.success('Profile updated successfully!')
       setEditing(false)
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong')
+      toast.error(err.response?.data?.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -87,6 +87,27 @@ const handleDeleteSlot = async (slotId) => {
   const handleLogout = async () => {
     await logout()
     navigate('/login')
+  }
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('avatar', file)
+
+    setUploading(true)
+    try {
+      const res = await api.post('/users/upload/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setUser(res.data.user)
+      toast.success('Profile photo updated!')
+    } catch (err) {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -109,8 +130,23 @@ const handleDeleteSlot = async (slotId) => {
 
           {/* Avatar + Name */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-              {user?.name?.charAt(0).toUpperCase()}
+            <div className="relative group">
+              <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0).toUpperCase()
+                )}
+              </div>
+              <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition text-white text-xs">
+                {uploading ? '...' : 'Edit'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
             <div>
               <h2 className="text-white text-xl font-semibold">{user?.name}</h2>
@@ -121,8 +157,8 @@ const handleDeleteSlot = async (slotId) => {
             </div>
           </div>
 
-          {/* Success / Error messages */}
-          {success && (
+          {/* Success / Error messages
+          {success && (-----
             <div className="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-lg mb-4 text-sm">
               {success}
             </div>
@@ -131,7 +167,7 @@ const handleDeleteSlot = async (slotId) => {
             <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
               {error}
             </div>
-          )}
+          )} */}
 
           {/* View Mode */}
           {!editing ? (
@@ -237,79 +273,79 @@ const handleDeleteSlot = async (slotId) => {
       </div>
 
       {/* Availability Section — sellers only */}
-{user?.role === 'seller' && (
-  <div className="bg-gray-900 rounded-2xl p-6 mt-6">
-    <h2 className="text-white text-xl font-semibold mb-4">My Availability</h2>
+      {user?.role === 'seller' && (
+        <div className="bg-gray-900 rounded-2xl p-6 mt-6">
+          <h2 className="text-white text-xl font-semibold mb-4">My Availability</h2>
 
-    {/* Add Slot Form */}
-    <div className="space-y-3 mb-6">
-      <div className="grid grid-cols-3 gap-3">
-        <select
-          value={slotForm.day}
-          onChange={(e) => setSlotForm({ ...slotForm, day: e.target.value })}
-          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        >
-          {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <input
-          type="time"
-          value={slotForm.startTime}
-          onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
-          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
-        <input
-          type="time"
-          value={slotForm.endTime}
-          onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
-          className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
-      </div>
-
-      {slotError && (
-        <p className="text-red-400 text-sm">{slotError}</p>
-      )}
-
-      <button
-        onClick={handleAddSlot}
-        disabled={slotLoading}
-        className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
-      >
-        {slotLoading ? 'Adding...' : '+ Add Slot'}
-      </button>
-    </div>
-
-    {/* Existing Slots */}
-    {slots.length === 0 ? (
-      <p className="text-gray-400 text-sm">No slots added yet</p>
-    ) : (
-      <div className="space-y-2">
-        {slots.map(slot => (
-          <div key={slot._id} className="flex items-center justify-between bg-gray-800 px-4 py-3 rounded-lg">
-            <div>
-              <span className="text-white text-sm font-medium">{slot.day}</span>
-              <span className="text-gray-400 text-sm ml-3">{slot.startTime} - {slot.endTime}</span>
-              {slot.isBooked && (
-                <span className="ml-3 text-xs bg-yellow-400/10 text-yellow-400 px-2 py-1 rounded-full">
-                  Booked
-                </span>
-              )}
-            </div>
-            {!slot.isBooked && (
-              <button
-                onClick={() => handleDeleteSlot(slot._id)}
-                className="text-red-400 hover:text-red-300 text-sm transition"
+          {/* Add Slot Form */}
+          <div className="space-y-3 mb-6">
+            <div className="grid grid-cols-3 gap-3">
+              <select
+                value={slotForm.day}
+                onChange={(e) => setSlotForm({ ...slotForm, day: e.target.value })}
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
-                Delete
-              </button>
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <input
+                type="time"
+                value={slotForm.startTime}
+                onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <input
+                type="time"
+                value={slotForm.endTime}
+                onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            {slotError && (
+              <p className="text-red-400 text-sm">{slotError}</p>
             )}
+
+            <button
+              onClick={handleAddSlot}
+              disabled={slotLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
+            >
+              {slotLoading ? 'Adding...' : '+ Add Slot'}
+            </button>
           </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+
+          {/* Existing Slots */}
+          {slots.length === 0 ? (
+            <p className="text-gray-400 text-sm">No slots added yet</p>
+          ) : (
+            <div className="space-y-2">
+              {slots.map(slot => (
+                <div key={slot._id} className="flex items-center justify-between bg-gray-800 px-4 py-3 rounded-lg">
+                  <div>
+                    <span className="text-white text-sm font-medium">{slot.day}</span>
+                    <span className="text-gray-400 text-sm ml-3">{slot.startTime} - {slot.endTime}</span>
+                    {slot.isBooked && (
+                      <span className="ml-3 text-xs bg-yellow-400/10 text-yellow-400 px-2 py-1 rounded-full">
+                        Booked
+                      </span>
+                    )}
+                  </div>
+                  {!slot.isBooked && (
+                    <button
+                      onClick={() => handleDeleteSlot(slot._id)}
+                      className="text-red-400 hover:text-red-300 text-sm transition"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
+import { useNavigate } from 'react-router-dom'
+
+const paymentColors = {
+  PENDING: 'text-gray-400 bg-gray-400/10',
+  PAID: 'text-blue-400 bg-blue-400/10',
+  HELD: 'text-yellow-400 bg-yellow-400/10',
+  RELEASED: 'text-green-400 bg-green-400/10',
+  REFUNDED: 'text-purple-400 bg-purple-400/10',
+  FAILED: 'text-red-400 bg-red-400/10',
+  DISPUTED: 'text-orange-400 bg-orange-400/10'
+}
 
 const statusColors = {
   pending: 'text-yellow-400 bg-yellow-400/10',
@@ -10,12 +21,16 @@ const statusColors = {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviewData, setReviewData] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [activeReview, setActiveReview] = useState(null)
+  const [payments, setPayments] = useState({})
+  const [disputeReason, setDisputeReason] = useState({})
+  const [showDispute, setShowDispute] = useState(null)
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -31,8 +46,24 @@ const Dashboard = () => {
     fetchBookings()
   }, [])
 
+  useEffect(() => {
+    const fetchPayments = async () => {
+      const paymentMap = {}
+      for (const booking of bookings) {
+        try {
+          const res = await api.get(`/payments/booking/${booking._id}`)
+          paymentMap[booking._id] = res.data
+        } catch (err) {
+          // no payment yet for this booking
+        }
+      }
+      setPayments(paymentMap)
+    }
+    if (bookings.length > 0) fetchPayments()
+  }, [bookings])
+
   //Calls PUT /bookings/:id with a new status
-//Updates that one booking in state without reloading the page
+  //Updates that one booking in state without reloading the page
 
   const updateStatus = async (bookingId, status) => {
     try {
@@ -43,9 +74,46 @@ const Dashboard = () => {
     }
   }
 
+  const handleRelease = async (bookingId) => {
+    try {
+      await api.post('/payments/release', { bookingId })
+      setPayments({
+        ...payments,
+        [bookingId]: { ...payments[bookingId], status: 'RELEASED' }
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleDispute = async (bookingId) => {
+    try {
+      await api.post('/payments/dispute', {
+        bookingId,
+        reason: disputeReason[bookingId]
+      })
+      setPayments({
+        ...payments,
+        [bookingId]: { ...payments[bookingId], status: 'DISPUTED' }
+      })
+      setShowDispute(null)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleMarkComplete = async (bookingId) => {
+    try {
+      await api.post('/payments/complete', { bookingId })
+      updateStatus(bookingId, 'completed')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
 
   //Calls POST /reviews with bookingId, rating, comment
- //On success → closes the form, marks booking as reviewed: true locally
+  //On success → closes the form, marks booking as reviewed: true locally
 
   const submitReview = async (bookingId, sellerId) => {
     setSubmitting(true)
@@ -130,6 +198,85 @@ const Dashboard = () => {
                   </div>
                 )}
 
+
+                {/* Payment Status */}
+                {payments[booking._id] && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-gray-400 text-xs">Payment:</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${paymentColors[payments[booking._id]?.status]}`}>
+                      {payments[booking._id]?.status}
+                    </span>
+                  </div>
+                )}
+
+                {/* Seller — mark complete (replaces old button) */}
+                {user?.role === 'seller' && booking.status === 'confirmed' && (
+                  <button
+                    onClick={() => handleMarkComplete(booking._id)}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition"
+                  >
+                    Mark as Completed
+                  </button>
+                )}
+
+                {/* Buyer — approve or dispute after completion */}
+                {user?.role === 'buyer' &&
+                  booking.status === 'completed' &&
+                  payments[booking._id]?.status === 'HELD' && (
+                    <div className="space-y-3 mt-3">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleRelease(booking._id)}
+                          className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition"
+                        >
+                          Approve & Release Payment
+                        </button>
+                        <button
+                          onClick={() => setShowDispute(booking._id)}
+                          className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-sm px-4 py-2 rounded-lg transition"
+                        >
+                           Raise Dispute
+                        </button>
+                      </div>
+
+                      {showDispute === booking._id && (
+                        <div className="space-y-2">
+                          <textarea
+                            rows={2}
+                            placeholder="Describe the issue..."
+                            value={disputeReason[booking._id] || ''}
+                            onChange={(e) => setDisputeReason({
+                              ...disputeReason,
+                              [booking._id]: e.target.value
+                            })}
+                            className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 resize-none text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDispute(booking._id)}
+                              className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-4 py-2 rounded-lg transition"
+                            >
+                              Submit Dispute
+                            </button>
+                            <button
+                              onClick={() => setShowDispute(null)}
+                              className="bg-gray-800 text-gray-400 text-sm px-4 py-2 rounded-lg transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+                {(booking.status === 'confirmed' || booking.status === 'completed') && (
+                  <button onClick={() => navigate(`/chat/${booking._id}`)} className="mt-3 bg-gray-800 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition" >
+                    💬 Open Chat
+                  </button>
+                )}
+
                 {/* Message */}
                 {booking.message && (
                   <p className="text-gray-400 text-sm mb-4 italic">"{booking.message}"</p>
@@ -186,11 +333,10 @@ const Dashboard = () => {
                                 ...reviewData,
                                 [booking._id]: { ...reviewData[booking._id], rating: star }
                               })}
-                              className={`text-2xl transition ${
-                                (reviewData[booking._id]?.rating || 0) >= star
+                              className={`text-2xl transition ${(reviewData[booking._id]?.rating || 0) >= star
                                   ? 'text-yellow-400'
                                   : 'text-gray-600'
-                              }`}
+                                }`}
                             >
                               ★
                             </button>
