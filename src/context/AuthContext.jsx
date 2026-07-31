@@ -10,28 +10,37 @@ export const AuthProvider = ({ children }) => {
 
   // On app load — check if user is already logged in
   useEffect(() => {
-    const token = localStorage.getItem('accessToken')
+    // Clear legacy localStorage token if it exists
+    localStorage.removeItem('accessToken')
+    
+    const token = sessionStorage.getItem('accessToken')
     if (token) {
       // Fetch their profile to restore session
       api.get('/users/profile')
         .then(res => setUser(res.data))
-        .catch(() => localStorage.removeItem('accessToken'))
+        .catch(() => sessionStorage.removeItem('accessToken'))
         .finally(() => setLoading(false))
     } else {
-      setLoading(false)
+      setTimeout(() => setLoading(false), 0)
     }
   }, [])
 
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password })
-    localStorage.setItem('accessToken', res.data.accessToken)
+    sessionStorage.setItem('accessToken', res.data.accessToken)
     setUser(res.data.user)
+    return res.data.user
   }
 
   const logout = async () => {
-    await api.post('/auth/logout')
-    localStorage.removeItem('accessToken')
-    setUser(null)
+    try {
+      await api.post('/auth/logout')
+    } catch (error) {
+      console.error('Logout API failed, but clearing local state anyway', error)
+    } finally {
+      sessionStorage.removeItem('accessToken')
+      setUser(null)
+    }
   }
 
   return (

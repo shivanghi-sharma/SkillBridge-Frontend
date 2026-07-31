@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
+import { AlertTriangle, CheckCircle, Inbox } from 'lucide-react'
+import {
+  FadeInSection,
+  StaggerContainer,
+  StaggerItem,
+  MotionButton,
+} from '../components/motion'
 
 const AdminDisputes = () => {
   const { user } = useAuth()
@@ -34,60 +41,122 @@ const AdminDisputes = () => {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Loading disputes...</p>
+    <div className="page">
+      <div className="page-container page-container--mid">
+        <div style={{ marginBottom: '2.5rem' }}>
+          <div className="skeleton" style={{ width: 120, height: 32, marginBottom: '0.5rem' }} />
+          <div className="skeleton" style={{ width: 280, height: 14 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {[1, 2].map(i => (
+            <div key={i} className="card" style={{ borderLeft: '3px solid var(--color-warning)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div>
+                  <div className="skeleton" style={{ width: 160, height: 16, marginBottom: 6 }} />
+                  <div className="skeleton" style={{ width: 120, height: 12 }} />
+                </div>
+                <div className="skeleton" style={{ width: 60, height: 22 }} />
+              </div>
+              <div className="skeleton" style={{ width: '100%', height: 56, marginBottom: '1rem' }} />
+              <div className="skeleton" style={{ width: 140, height: 36 }} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 px-4 py-10">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-white text-3xl font-bold mb-2">Admin — Disputes</h1>
-        <p className="text-gray-400 mb-8">Review and resolve open payment disputes</p>
+    <div className="page">
+      <div className="page-container page-container--mid">
+        <FadeInSection>
+          <h1 className="heading-xl" style={{ marginBottom: '0.5rem' }}>Disputes</h1>
+          <p className="text-body" style={{ marginBottom: '2.5rem' }}>Review and resolve open payment disputes</p>
+        </FadeInSection>
 
         {disputes.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-            <p className="text-gray-400">No open disputes 🎉</p>
-          </div>
+          <FadeInSection>
+            <div className="card">
+              <div className="empty-state">
+                <Inbox size={40} className="empty-state__icon" />
+                <p className="empty-state__title">No open disputes</p>
+                <p className="empty-state__text">All clear. Nothing to resolve.</p>
+              </div>
+            </div>
+          </FadeInSection>
         ) : (
-          <div className="space-y-6">
+          <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {disputes.map(dispute => (
-              <div key={dispute._id} className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
+              <StaggerItem key={dispute._id}>
+              <div
+                className="card"
+                style={{ borderLeft: '3px solid var(--color-warning)' }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '1rem',
+                  }}
+                >
                   <div>
-                    <p className="text-white font-semibold">
+                    <p
+                      style={{
+                        fontSize: '0.9375rem',
+                        fontWeight: 600,
+                        color: 'var(--color-text-primary)',
+                        marginBottom: '0.125rem',
+                      }}
+                    >
                       Dispute by {dispute.raisedBy?.name}
                     </p>
-                    <p className="text-gray-400 text-sm">{dispute.raisedBy?.email}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {dispute.raisedBy?.email}
+                    </p>
                   </div>
-                  <span className="text-xs bg-orange-400/10 text-orange-400 px-3 py-1 rounded-full">
+                  <span className="badge badge--warning">
+                    <AlertTriangle size={10} />
                     OPEN
                   </span>
                 </div>
 
-                <div className="bg-gray-800 rounded-lg px-4 py-3 mb-4">
-                  <p className="text-gray-400 text-xs mb-1">Reason</p>
-                  <p className="text-white text-sm">{dispute.reason}</p>
+                <div
+                  style={{
+                    backgroundColor: 'var(--color-surface-raised)',
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1rem',
+                    borderLeft: '3px solid var(--color-border)',
+                  }}
+                >
+                  <p className="input-label" style={{ marginBottom: '0.25rem' }}>Reason</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-primary)' }}>
+                    {dispute.reason}
+                  </p>
                 </div>
 
                 {/* Resolution Form */}
-                <div className="space-y-3">
-                  <select
-                    value={form[dispute._id]?.resolution || 'FULL_RELEASE'}
-                    onChange={(e) => setForm({
-                      ...form,
-                      [dispute._id]: { ...form[dispute._id], resolution: e.target.value }
-                    })}
-                    className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none text-sm"
-                  >
-                    <option value="FULL_RELEASE">Full Release to Seller</option>
-                    <option value="FULL_REFUND">Full Refund to Buyer</option>
-                    <option value="PARTIAL">Partial Split</option>
-                  </select>
+                <div>
+                  <div className="input-group">
+                    <label className="input-label">Resolution</label>
+                    <select
+                      value={form[dispute._id]?.resolution || 'FULL_RELEASE'}
+                      onChange={(e) => setForm({
+                        ...form,
+                        [dispute._id]: { ...form[dispute._id], resolution: e.target.value }
+                      })}
+                      className="input-field input-field--boxed"
+                      style={{ fontSize: '0.8125rem' }}
+                    >
+                      <option value="FULL_RELEASE">Full Release to Seller</option>
+                      <option value="FULL_REFUND">Full Refund to Buyer</option>
+                      <option value="PARTIAL">Partial Split</option>
+                    </select>
+                  </div>
 
                   {form[dispute._id]?.resolution === 'PARTIAL' && (
-                    <div className="flex items-center gap-3">
-                      <label className="text-gray-400 text-sm">Seller gets:</label>
+                    <div className="input-group">
+                      <label className="input-label">Seller gets (%)</label>
                       <input
                         type="number"
                         min="0"
@@ -97,33 +166,42 @@ const AdminDisputes = () => {
                           ...form,
                           [dispute._id]: { ...form[dispute._id], sellerPercent: e.target.value }
                         })}
-                        className="w-24 bg-gray-800 text-white px-3 py-2 rounded-lg outline-none text-sm"
+                        className="input-field input-field--boxed"
+                        style={{ fontSize: '0.8125rem', maxWidth: 120 }}
                       />
-                      <span className="text-gray-400 text-sm">%</span>
                     </div>
                   )}
 
-                  <input
-                    type="text"
-                    placeholder="Admin note (optional)"
-                    value={form[dispute._id]?.adminNote || ''}
-                    onChange={(e) => setForm({
-                      ...form,
-                      [dispute._id]: { ...form[dispute._id], adminNote: e.target.value }
-                    })}
-                    className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none text-sm"
-                  />
+                  <div className="input-group">
+                    <label className="input-label">Admin note (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Internal note..."
+                      value={form[dispute._id]?.adminNote || ''}
+                      onChange={(e) => setForm({
+                        ...form,
+                        [dispute._id]: { ...form[dispute._id], adminNote: e.target.value }
+                      })}
+                      className="input-field input-field--boxed"
+                      style={{ fontSize: '0.8125rem' }}
+                    />
+                  </div>
 
-                  <button
+                  <MotionButton
                     onClick={() => handleResolve(dispute._id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-6 py-2 rounded-lg transition"
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.8125rem' }}
+                    hoverScale={1.03}
+                    tapScale={0.97}
                   >
+                    <CheckCircle size={14} />
                     Resolve Dispute
-                  </button>
+                  </MotionButton>
                 </div>
               </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         )}
       </div>
     </div>

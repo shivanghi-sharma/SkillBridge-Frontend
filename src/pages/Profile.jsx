@@ -3,6 +3,14 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import { LogOut, Pencil, Plus, Trash2, Clock, X } from 'lucide-react'
+import {
+  FadeInSection,
+  StaggerContainer,
+  StaggerItem,
+  MotionButton,
+  motion,
+} from '../components/motion'
 
 const Profile = () => {
   const { user, setUser, logout } = useAuth()
@@ -16,47 +24,10 @@ const Profile = () => {
     name: user?.name || '',
     bio: user?.bio || '',
     skills: user?.skills?.join(', ') || '',
-    hourlyRate: user?.hourlyRate || ''
+    hourlyRate: user?.hourlyRate || '',
+    sessionDuration: user?.sessionDuration || 60
   })
-  const [slots, setSlots] = useState([])
-  const [slotForm, setSlotForm] = useState({ day: 'Monday', startTime: '', endTime: '' })
-  const [slotLoading, setSlotLoading] = useState(false)
-  const [slotError, setSlotError] = useState('')
   const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    if (user?.role === 'seller') {
-      api.get(`/availability/${user._id}`)
-        .then(res => setSlots(res.data))
-        .catch(err => console.error(err))
-    }
-  }, [user])
-
-  const handleAddSlot = async () => {
-    if (!slotForm.startTime || !slotForm.endTime) {
-      return setSlotError('Please fill in both times')
-    }
-    setSlotLoading(true)
-    setSlotError('')
-    try {
-      const res = await api.post('/availability', slotForm)
-      setSlots([...slots, res.data.slot])
-      setSlotForm({ day: 'Monday', startTime: '', endTime: '' })
-    } catch (err) {
-      setSlotError(err.response?.data?.message || 'Something went wrong')
-    } finally {
-      setSlotLoading(false)
-    }
-  }
-
-  const handleDeleteSlot = async (slotId) => {
-    try {
-      await api.delete(`/availability/${slotId}`)
-      setSlots(slots.filter(s => s._id !== slotId))
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -110,125 +81,211 @@ const Profile = () => {
     }
   }
 
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
   return (
-    <div className="min-h-screen bg-gray-950 px-4 py-10">
-      <div className="max-w-2xl mx-auto">
+    <div className="page">
+      <div className="page-container page-container--narrow">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-white text-2xl font-bold">My Profile</h1>
-          <button
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '2.5rem',
+          }}
+        >
+          <h1 className="heading-lg">My Profile</h1>
+          <MotionButton
             onClick={handleLogout}
-            className="text-sm text-red-400 hover:text-red-300 transition"
+            className="btn btn-ghost"
+            style={{
+              fontSize: '0.8125rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              color: 'var(--color-text-muted)',
+            }}
+            hoverScale={1.04}
+            tapScale={0.96}
           >
+            <LogOut size={14} />
             Logout
-          </button>
+          </MotionButton>
         </div>
 
         {/* Profile Card */}
-        <div className="bg-gray-900 rounded-2xl p-6">
+        <FadeInSection>
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
 
           {/* Avatar + Name */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative group">
-              <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ position: 'relative' }}>
+              <div
+                className="avatar avatar--lg"
+                style={{
+                  border: '2px solid var(--color-accent)',
+                  width: 80,
+                  height: 80,
+                  fontSize: '2rem'
+                }}
+              >
                 {user?.avatar ? (
-                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   user?.name?.charAt(0).toUpperCase()
                 )}
               </div>
-              <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition text-white text-xs">
-                {uploading ? '...' : 'Edit'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </label>
             </div>
-            <div>
-              <h2 className="text-white text-xl font-semibold">{user?.name}</h2>
-              <p className="text-gray-400 text-sm">{user?.email}</p>
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full mt-1 inline-block">
-                {user?.role}
-              </span>
+            
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2
+                  style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: 'var(--color-text-primary)',
+                    marginBottom: '0.25rem',
+                  }}
+                >
+                  {user?.name}
+                </h2>
+                <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  {user?.email}
+                </p>
+                <span className="badge badge--accent">{user?.role}</span>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                <label
+                  className="btn btn-secondary"
+                  style={{ cursor: 'pointer', fontSize: '0.8125rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
+                >
+                  {uploading ? <span className="spinner spinner--sm" /> : <Pencil size={14} />}
+                  {uploading ? 'Uploading...' : 'Change Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {user?.role === 'seller' && (
+                  <label
+                    className="btn btn-ghost"
+                    style={{ cursor: 'pointer', fontSize: '0.8125rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center', border: '1px dashed var(--color-border)' }}
+                  >
+                    <Plus size={14} /> Upload Portfolio
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={async (e) => {
+                        const file = e.target.files[0]
+                        if (!file) return
+                        const fd = new FormData()
+                        fd.append('portfolio', file)
+                        try {
+                          const res = await api.post('/users/upload/portfolio', fd, { headers: { 'Content-Type': 'multipart/form-data' }})
+                          setUser(res.data.user)
+                          toast.success('Portfolio uploaded!')
+                        } catch(err) {
+                          toast.error('Portfolio upload failed')
+                        }
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+                {user?.portfolio && (
+                  <a href={user.portfolio} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--color-accent)', textDecoration: 'none', alignSelf: 'center' }}>
+                    View current portfolio
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Success / Error messages
-          {success && (-----
-            <div className="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-lg mb-4 text-sm">
-              {success}
-            </div>
-          )}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
-              {error}
-            </div>
-          )} */}
+          <hr className="divider" />
 
           {/* View Mode */}
           {!editing ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400 text-sm">Bio</p>
-                <p className="text-white mt-1">{user?.bio || 'No bio yet'}</p>
+            <div>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <p className="input-label" style={{ marginBottom: '0.375rem' }}>Bio</p>
+                <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)' }}>
+                  {user?.bio || 'No bio yet'}
+                </p>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Skills</p>
-                <div className="flex flex-wrap gap-2 mt-1">
+              <div style={{ marginBottom: '1.25rem' }}>
+                <p className="input-label" style={{ marginBottom: '0.5rem' }}>Skills</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                   {user?.skills?.length > 0 ? user.skills.map((skill, i) => (
-                    <span key={i} className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-sm">
-                      {skill}
-                    </span>
-                  )) : <p className="text-white">No skills added yet</p>}
+                    <span key={i} className="tag">{skill}</span>
+                  )) : (
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                      No skills added yet
+                    </p>
+                  )}
                 </div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm">Hourly Rate</p>
-                <p className="text-white mt-1">
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p className="input-label" style={{ marginBottom: '0.375rem' }}>Hourly Rate</p>
+                <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)' }}>
                   {user?.hourlyRate ? `₹${user.hourlyRate}/hr` : 'Not set'}
                 </p>
               </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <p className="input-label" style={{ marginBottom: '0.375rem' }}>Session Duration</p>
+                <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)' }}>
+                  {user?.sessionDuration ? `${user.sessionDuration} minutes` : '60 minutes'}
+                </p>
+              </div>
 
-              <button
+              <MotionButton
                 onClick={() => setEditing(true)}
-                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm transition"
+                className="btn btn-primary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                }}
+                hoverScale={1.03}
+                tapScale={0.97}
               >
+                <Pencil size={14} />
                 Edit Profile
-              </button>
+              </MotionButton>
             </div>
 
           ) : (
 
             /* Edit Mode */
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Full Name</label>
+            <form onSubmit={handleSubmit}>
+              <div className="input-group">
+                <label className="input-label">Full Name</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-field"
                 />
               </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Bio</label>
+              <div className="input-group">
+                <label className="input-label">Bio</label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
                   rows={3}
                   placeholder="Tell people about yourself..."
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="input-field"
                 />
               </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">
-                  Skills <span className="text-gray-500">(comma separated)</span>
+              <div className="input-group">
+                <label className="input-label">
+                  Skills <span style={{ color: 'var(--color-text-muted)', textTransform: 'none', letterSpacing: 'normal' }}>(comma separated)</span>
                 </label>
                 <input
                   type="text"
@@ -236,116 +293,70 @@ const Profile = () => {
                   value={formData.skills}
                   onChange={handleChange}
                   placeholder="React, Node.js, Design"
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-field"
                 />
               </div>
-              <div>
-                <label className="text-gray-400 text-sm mb-1 block">Hourly Rate (₹)</label>
+              <div className="input-group">
+                <label className="input-label">Hourly Rate (INR)</label>
                 <input
                   type="number"
                   name="hourlyRate"
                   value={formData.hourlyRate}
                   onChange={handleChange}
                   placeholder="500"
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  className="input-field"
+                />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Session Duration (minutes)</label>
+                <input
+                  type="number"
+                  name="sessionDuration"
+                  value={formData.sessionDuration || 60}
+                  onChange={handleChange}
+                  placeholder="60"
+                  className="input-field"
                 />
               </div>
 
-              <div className="flex gap-3 mt-2">
-                <button
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <MotionButton
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm transition disabled:opacity-50"
+                  className="btn btn-primary"
+                  hoverScale={1.03}
+                  tapScale={0.97}
                 >
                   {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
+                </MotionButton>
+                <MotionButton
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-lg text-sm transition"
+                  className="btn btn-secondary"
+                  hoverScale={1.03}
+                  tapScale={0.97}
                 >
                   Cancel
-                </button>
+                </MotionButton>
               </div>
             </form>
           )}
         </div>
+        </FadeInSection>
+
+
       </div>
 
-      {/* Availability Section — sellers only */}
-      {user?.role === 'seller' && (
-        <div className="bg-gray-900 rounded-2xl p-6 mt-6">
-          <h2 className="text-white text-xl font-semibold mb-4">My Availability</h2>
-
-          {/* Add Slot Form */}
-          <div className="space-y-3 mb-6">
-            <div className="grid grid-cols-3 gap-3">
-              <select
-                value={slotForm.day}
-                onChange={(e) => setSlotForm({ ...slotForm, day: e.target.value })}
-                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-              <input
-                type="time"
-                value={slotForm.startTime}
-                onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
-                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-              <input
-                type="time"
-                value={slotForm.endTime}
-                onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
-                className="bg-gray-800 text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
-
-            {slotError && (
-              <p className="text-red-400 text-sm">{slotError}</p>
-            )}
-
-            <button
-              onClick={handleAddSlot}
-              disabled={slotLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
-            >
-              {slotLoading ? 'Adding...' : '+ Add Slot'}
-            </button>
-          </div>
-
-          {/* Existing Slots */}
-          {slots.length === 0 ? (
-            <p className="text-gray-400 text-sm">No slots added yet</p>
-          ) : (
-            <div className="space-y-2">
-              {slots.map(slot => (
-                <div key={slot._id} className="flex items-center justify-between bg-gray-800 px-4 py-3 rounded-lg">
-                  <div>
-                    <span className="text-white text-sm font-medium">{slot.day}</span>
-                    <span className="text-gray-400 text-sm ml-3">{slot.startTime} - {slot.endTime}</span>
-                    {slot.isBooked && (
-                      <span className="ml-3 text-xs bg-yellow-400/10 text-yellow-400 px-2 py-1 rounded-full">
-                        Booked
-                      </span>
-                    )}
-                  </div>
-                  {!slot.isBooked && (
-                    <button
-                      onClick={() => handleDeleteSlot(slot._id)}
-                      className="text-red-400 hover:text-red-300 text-sm transition"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <style>{`
+        .profile-avatar-wrapper:hover .profile-avatar-overlay {
+          opacity: 1 !important;
+        }
+        @media (max-width: 640px) {
+          .slot-form-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

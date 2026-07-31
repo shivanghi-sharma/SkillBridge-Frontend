@@ -2,22 +2,38 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 import { useNavigate } from 'react-router-dom'
+import {
+  MessageSquare,
+  Check,
+  Star,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Inbox,
+} from 'lucide-react'
+import {
+  FadeInSection,
+  StaggerContainer,
+  StaggerItem,
+  motion,
+} from '../components/motion'
 
 const paymentColors = {
-  PENDING: 'text-gray-400 bg-gray-400/10',
-  PAID: 'text-blue-400 bg-blue-400/10',
-  HELD: 'text-yellow-400 bg-yellow-400/10',
-  RELEASED: 'text-green-400 bg-green-400/10',
-  REFUNDED: 'text-purple-400 bg-purple-400/10',
-  FAILED: 'text-red-400 bg-red-400/10',
-  DISPUTED: 'text-orange-400 bg-orange-400/10'
+  PENDING: 'badge--neutral',
+  PAID: 'badge--info',
+  HELD: 'badge--warning',
+  RELEASED: 'badge--success',
+  REFUNDED: 'badge--accent',
+  FAILED: 'badge--error',
+  DISPUTED: 'badge--warning'
 }
 
-const statusColors = {
-  pending: 'text-yellow-400 bg-yellow-400/10',
-  confirmed: 'text-blue-400 bg-blue-400/10',
-  completed: 'text-green-400 bg-green-400/10',
-  cancelled: 'text-red-400 bg-red-400/10'
+const statusConfig = {
+  pending: { className: 'badge--warning', label: 'Pending' },
+  confirmed: { className: 'badge--info', label: 'Confirmed' },
+  completed: { className: 'badge--success', label: 'Completed' },
+  cancelled: { className: 'badge--error', label: 'Cancelled' },
 }
 
 const Dashboard = () => {
@@ -133,259 +149,421 @@ const Dashboard = () => {
     }
   }
 
+  // Skeleton loading state
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Loading dashboard...</p>
+    <div className="page">
+      <div className="page-container page-container--mid">
+        <div style={{ marginBottom: '2.5rem' }}>
+          <div className="skeleton" style={{ width: 200, height: 32, marginBottom: '0.75rem' }} />
+          <div className="skeleton" style={{ width: 300, height: 16 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+                <div>
+                  <div className="skeleton" style={{ width: 140, height: 14, marginBottom: 6 }} />
+                  <div className="skeleton" style={{ width: 100, height: 10 }} />
+                </div>
+              </div>
+              <div className="skeleton" style={{ width: '60%', height: 32, marginBottom: 8 }} />
+              <div className="skeleton" style={{ width: 120, height: 28 }} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 px-4 py-10">
-      <div className="max-w-4xl mx-auto">
+    <div className="page">
+      <div className="page-container page-container--mid">
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-white text-3xl font-bold mb-1">Dashboard</h1>
-          <p className="text-gray-400">
-            {user?.role === 'seller' ? 'Manage your incoming bookings' : 'Track your booked sessions'}
-          </p>
-        </div>
-
-        {bookings.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
-            <p className="text-gray-400 text-lg">No bookings yet</p>
-            <p className="text-gray-600 text-sm mt-1">
-              {user?.role === 'buyer' ? 'Browse sellers and book a session' : 'Add availability slots to start receiving bookings'}
+        <FadeInSection>
+          <div style={{ marginBottom: '2.5rem' }}>
+            <h1 className="heading-xl" style={{ marginBottom: '0.5rem' }}>
+              Dashboard
+            </h1>
+            <p className="text-body">
+              {user?.role === 'seller' ? 'Manage your incoming bookings' : 'Track your booked sessions'}
             </p>
           </div>
+        </FadeInSection>
+
+        {bookings.length === 0 ? (
+          <FadeInSection>
+            <div className="card">
+              <div className="empty-state">
+                <Inbox size={40} className="empty-state__icon" />
+                <p className="empty-state__title">No bookings yet</p>
+                <p className="empty-state__text">
+                  {user?.role === 'buyer' ? 'Browse sellers and book a session' : 'Update your profile to start receiving bookings'}
+                </p>
+              </div>
+            </div>
+          </FadeInSection>
         ) : (
-          <div className="space-y-4">
-            {bookings.map(booking => (
-              <div key={booking._id} className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {bookings.map(booking => {
+              const status = statusConfig[booking.status] || statusConfig.pending
+              return (
+                <StaggerItem key={booking._id}>
+                  <div className="card">
 
-                <div className="flex items-start justify-between mb-4">
-                  {/* Person Info */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                      {user?.role === 'buyer'
-                        ? booking.seller?.name?.charAt(0).toUpperCase()
-                        : booking.buyer?.name?.charAt(0).toUpperCase()
-                      }
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">
-                        {user?.role === 'buyer' ? booking.seller?.name : booking.buyer?.name}
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        {user?.role === 'buyer' ? booking.seller?.email : booking.buyer?.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status Badge */}
-                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusColors[booking.status]}`}>
-                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                  </span>
-                </div>
-
-                {/* Slot Info */}
-                {booking.slot && (
-                  <div className="bg-gray-800 rounded-lg px-4 py-3 mb-4">
-                    <p className="text-gray-400 text-xs mb-1">Session Slot</p>
-                    <p className="text-white text-sm font-medium">
-                      {booking.slot.day} · {booking.slot.startTime} - {booking.slot.endTime}
-                    </p>
-                  </div>
-                )}
-
-
-                {/* Payment Status */}
-                {payments[booking._id] && (
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-gray-400 text-xs">Payment:</span>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${paymentColors[payments[booking._id]?.status]}`}>
-                      {payments[booking._id]?.status}
-                    </span>
-                  </div>
-                )}
-
-                {/* Seller — mark complete (replaces old button) */}
-                {user?.role === 'seller' && booking.status === 'confirmed' && (
-                  <button
-                    onClick={() => handleMarkComplete(booking._id)}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition"
-                  >
-                    Mark as Completed
-                  </button>
-                )}
-
-                {/* Buyer — approve or dispute after completion */}
-                {user?.role === 'buyer' &&
-                  booking.status === 'completed' &&
-                  payments[booking._id]?.status === 'HELD' && (
-                    <div className="space-y-3 mt-3">
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleRelease(booking._id)}
-                          className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition"
-                        >
-                          Approve & Release Payment
-                        </button>
-                        <button
-                          onClick={() => setShowDispute(booking._id)}
-                          className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-sm px-4 py-2 rounded-lg transition"
-                        >
-                           Raise Dispute
-                        </button>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        marginBottom: '1rem',
+                      }}
+                    >
+                      {/* Person Info */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="avatar avatar--md">
+                          {user?.role === 'buyer'
+                            ? booking.seller?.name?.charAt(0).toUpperCase()
+                            : booking.buyer?.name?.charAt(0).toUpperCase()
+                          }
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              fontSize: '0.9375rem',
+                              fontWeight: 600,
+                              color: 'var(--color-text-primary)',
+                              marginBottom: '0.125rem',
+                            }}
+                          >
+                            {user?.role === 'buyer' ? booking.seller?.name : booking.buyer?.name}
+                          </p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {user?.role === 'buyer' ? booking.seller?.email : booking.buyer?.email}
+                          </p>
+                        </div>
                       </div>
 
-                      {showDispute === booking._id && (
-                        <div className="space-y-2">
-                          <textarea
-                            rows={2}
-                            placeholder="Describe the issue..."
-                            value={disputeReason[booking._id] || ''}
-                            onChange={(e) => setDisputeReason({
-                              ...disputeReason,
-                              [booking._id]: e.target.value
-                            })}
-                            className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 resize-none text-sm"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleDispute(booking._id)}
-                              className="bg-orange-500 hover:bg-orange-600 text-white text-sm px-4 py-2 rounded-lg transition"
+                      {/* Status Badge */}
+                      <span className={`badge ${status.className}`}>
+                        {status.label}
+                      </span>
+                    </div>
+
+                    {/* Booking Date & Time Info */}
+                    {(booking.bookingDate || booking.bookingTime) && (
+                      <div
+                        style={{
+                          backgroundColor: 'var(--color-surface-raised)',
+                          padding: '0.75rem 1rem',
+                          marginBottom: '1rem',
+                          borderLeft: '3px solid var(--color-border)',
+                        }}
+                      >
+                        <p className="input-label" style={{ marginBottom: '0.25rem' }}>Session Scheduled</p>
+                        <p
+                          style={{
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            color: 'var(--color-text-primary)',
+                          }}
+                        >
+                          {booking.bookingDate} &middot; {booking.bookingTime} ({booking.duration || 60} mins)
+                        </p>
+                      </div>
+                    )}
+
+
+                    {/* Payment Status */}
+                    {payments[booking._id] && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          marginBottom: '0.75rem',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>
+                          Payment
+                        </span>
+                        <span className={`badge ${paymentColors[payments[booking._id]?.status] || 'badge--neutral'}`}>
+                          {payments[booking._id]?.status}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Seller — mark complete (replaces old button) */}
+                    {user?.role === 'seller' && booking.status === 'confirmed' && (
+                      <motion.button
+                        onClick={() => handleMarkComplete(booking._id)}
+                        className="btn btn-success"
+                        style={{ fontSize: '0.8125rem', marginBottom: '0.5rem' }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                      >
+                        <CheckCircle size={14} />
+                        Mark as Completed
+                      </motion.button>
+                    )}
+
+                    {/* Buyer — approve or dispute after completion */}
+                    {user?.role === 'buyer' &&
+                      booking.status === 'completed' &&
+                      payments[booking._id]?.status === 'HELD' && (
+                        <div style={{ marginBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <motion.button
+                              onClick={() => handleRelease(booking._id)}
+                              className="btn btn-success"
+                              style={{ fontSize: '0.8125rem' }}
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
+                              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                             >
-                              Submit Dispute
-                            </button>
-                            <button
-                              onClick={() => setShowDispute(null)}
-                              className="bg-gray-800 text-gray-400 text-sm px-4 py-2 rounded-lg transition"
+                              <Check size={14} />
+                              Approve and Release
+                            </motion.button>
+                            <motion.button
+                              onClick={() => setShowDispute(booking._id)}
+                              className="btn btn-danger"
+                              style={{ fontSize: '0.8125rem' }}
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
+                              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                             >
-                              Cancel
-                            </button>
+                              <AlertTriangle size={14} />
+                              Raise Dispute
+                            </motion.button>
                           </div>
+
+                          {showDispute === booking._id && (
+                            <div>
+                              <textarea
+                                rows={2}
+                                placeholder="Describe the issue..."
+                                value={disputeReason[booking._id] || ''}
+                                onChange={(e) => setDisputeReason({
+                                  ...disputeReason,
+                                  [booking._id]: e.target.value
+                                })}
+                                className="input-field input-field--boxed"
+                                style={{ fontSize: '0.8125rem', marginBottom: '0.5rem' }}
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <motion.button
+                                  onClick={() => handleDispute(booking._id)}
+                                  className="btn btn-primary"
+                                  style={{ fontSize: '0.8125rem' }}
+                                  whileHover={{ scale: 1.03 }}
+                                  whileTap={{ scale: 0.97 }}
+                                >
+                                  Submit Dispute
+                                </motion.button>
+                                <motion.button
+                                  onClick={() => setShowDispute(null)}
+                                  className="btn btn-secondary"
+                                  style={{ fontSize: '0.8125rem' }}
+                                  whileHover={{ scale: 1.03 }}
+                                  whileTap={{ scale: 0.97 }}
+                                >
+                                  Cancel
+                                </motion.button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
 
-                {(booking.status === 'confirmed' || booking.status === 'completed') && (
-                  <button onClick={() => navigate(`/chat/${booking._id}`)} className="mt-3 bg-gray-800 hover:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition" >
-                    💬 Open Chat
-                  </button>
-                )}
-
-                {/* Message */}
-                {booking.message && (
-                  <p className="text-gray-400 text-sm mb-4 italic">"{booking.message}"</p>
-                )}
-
-                {/* Seller Actions */}
-                {user?.role === 'seller' && booking.status === 'pending' && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => updateStatus(booking._id, 'confirmed')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => updateStatus(booking._id, 'cancelled')}
-                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm px-4 py-2 rounded-lg transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-
-                {user?.role === 'seller' && booking.status === 'confirmed' && (
-                  <button
-                    onClick={() => updateStatus(booking._id, 'completed')}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition"
-                  >
-                    Mark as Completed
-                  </button>
-                )}
-
-                {/* Buyer Actions */}
-                {user?.role === 'buyer' && booking.status === 'pending' && (
-                  <button
-                    onClick={() => updateStatus(booking._id, 'cancelled')}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm px-4 py-2 rounded-lg transition"
-                  >
-                    Cancel Booking
-                  </button>
-                )}
-
-                {/* Leave Review */}
-                {user?.role === 'buyer' && booking.status === 'completed' && !booking.reviewed && (
-                  <div className="mt-4">
-                    {activeReview === booking._id ? (
-                      <div className="space-y-3">
-                        {/* Star Rating */}
-                        <div className="flex gap-2">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <button
-                              key={star}
-                              onClick={() => setReviewData({
-                                ...reviewData,
-                                [booking._id]: { ...reviewData[booking._id], rating: star }
-                              })}
-                              className={`text-2xl transition ${(reviewData[booking._id]?.rating || 0) >= star
-                                  ? 'text-yellow-400'
-                                  : 'text-gray-600'
-                                }`}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </div>
-                        <textarea
-                          rows={2}
-                          placeholder="Write a review..."
-                          value={reviewData[booking._id]?.comment || ''}
-                          onChange={(e) => setReviewData({
-                            ...reviewData,
-                            [booking._id]: { ...reviewData[booking._id], comment: e.target.value }
-                          })}
-                          className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
-                        />
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => submitReview(booking._id, booking.seller?._id)}
-                            disabled={submitting}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
-                          >
-                            {submitting ? 'Submitting...' : 'Submit Review'}
-                          </button>
-                          <button
-                            onClick={() => setActiveReview(null)}
-                            className="bg-gray-800 text-gray-400 text-sm px-4 py-2 rounded-lg transition"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setActiveReview(booking._id)}
-                        className="bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 text-sm px-4 py-2 rounded-lg transition"
+                    {(booking.status === 'confirmed' || booking.status === 'completed') && (
+                      <motion.button
+                        onClick={() => navigate(`/chat/${booking._id}`)}
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8125rem', marginBottom: '0.5rem' }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                       >
-                        ★ Leave a Review
-                      </button>
+                        <MessageSquare size={14} />
+                        Open Chat
+                      </motion.button>
                     )}
+
+                    {/* Message */}
+                    {booking.message && (
+                      <p
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: 'var(--color-text-muted)',
+                          fontStyle: 'italic',
+                          marginBottom: '0.75rem',
+                          paddingLeft: '0.75rem',
+                          borderLeft: '2px solid var(--color-border)',
+                        }}
+                      >
+                        "{booking.message}"
+                      </p>
+                    )}
+
+                    {/* Seller Actions */}
+                    {user?.role === 'seller' && booking.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <motion.button
+                          onClick={() => updateStatus(booking._id, 'confirmed')}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.8125rem' }}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        >
+                          <Check size={14} />
+                          Confirm
+                        </motion.button>
+                        <motion.button
+                          onClick={() => updateStatus(booking._id, 'cancelled')}
+                          className="btn btn-danger"
+                          style={{ fontSize: '0.8125rem' }}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        >
+                          <XCircle size={14} />
+                          Cancel
+                        </motion.button>
+                      </div>
+                    )}
+
+                    {user?.role === 'seller' && booking.status === 'confirmed' && (
+                      <motion.button
+                        onClick={() => updateStatus(booking._id, 'completed')}
+                        className="btn btn-success"
+                        style={{ fontSize: '0.8125rem' }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                      >
+                        <CheckCircle size={14} />
+                        Mark as Completed
+                      </motion.button>
+                    )}
+
+                    {/* Buyer Actions */}
+                    {user?.role === 'buyer' && booking.status === 'pending' && (
+                      <motion.button
+                        onClick={() => updateStatus(booking._id, 'cancelled')}
+                        className="btn btn-danger"
+                        style={{ fontSize: '0.8125rem' }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                      >
+                        <XCircle size={14} />
+                        Cancel Booking
+                      </motion.button>
+                    )}
+
+                    {/* Leave Review */}
+                    {user?.role === 'buyer' && booking.status === 'completed' && !booking.reviewed && (
+                      <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '0.75rem' }}>
+                        {activeReview === booking._id ? (
+                          <div>
+                            {/* Star Rating */}
+                            <div className="star-rating" style={{ marginBottom: '0.75rem' }}>
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <button
+                                  key={star}
+                                  onClick={() => setReviewData({
+                                    ...reviewData,
+                                    [booking._id]: { ...reviewData[booking._id], rating: star }
+                                  })}
+                                  className={`star-rating__star ${
+                                    (reviewData[booking._id]?.rating || 0) >= star
+                                      ? 'star-rating__star--filled'
+                                      : ''
+                                  }`}
+                                >
+                                  <Star
+                                    size={20}
+                                    fill={(reviewData[booking._id]?.rating || 0) >= star ? 'currentColor' : 'none'}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                            <textarea
+                              rows={2}
+                              placeholder="Write a review..."
+                              value={reviewData[booking._id]?.comment || ''}
+                              onChange={(e) => setReviewData({
+                                ...reviewData,
+                                [booking._id]: { ...reviewData[booking._id], comment: e.target.value }
+                              })}
+                              className="input-field input-field--boxed"
+                              style={{ fontSize: '0.8125rem', marginBottom: '0.5rem' }}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <motion.button
+                                onClick={() => submitReview(booking._id, booking.seller?._id)}
+                                disabled={submitting}
+                                className="btn btn-primary"
+                                style={{ fontSize: '0.8125rem' }}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                              >
+                                {submitting ? 'Submitting...' : 'Submit Review'}
+                              </motion.button>
+                              <motion.button
+                                onClick={() => setActiveReview(null)}
+                                className="btn btn-secondary"
+                                style={{ fontSize: '0.8125rem' }}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                              >
+                                Cancel
+                              </motion.button>
+                            </div>
+                          </div>
+                        ) : (
+                          <motion.button
+                            onClick={() => setActiveReview(booking._id)}
+                            className="btn btn-ghost"
+                            style={{
+                              fontSize: '0.8125rem',
+                              color: 'var(--color-warning)',
+                            }}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                          >
+                            <Star size={14} />
+                            Leave a Review
+                          </motion.button>
+                        )}
+                      </div>
+                    )}
+
+                    {booking.reviewed && (
+                      <p
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: 'var(--color-success)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          marginTop: '0.75rem',
+                        }}
+                      >
+                        <Check size={14} />
+                        Review submitted
+                      </p>
+                    )}
+
                   </div>
-                )}
-
-                {booking.reviewed && (
-                  <p className="text-green-400 text-sm mt-4">✓ Review submitted</p>
-                )}
-
-              </div>
-            ))}
-          </div>
+                </StaggerItem>
+              )
+            })}
+          </StaggerContainer>
         )}
       </div>
     </div>

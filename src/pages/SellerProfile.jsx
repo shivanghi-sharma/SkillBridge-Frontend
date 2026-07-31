@@ -3,43 +3,40 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { openRazorpayCheckout } from '../utils/razorpay'
 import api from '../api/axios'
+import { Star, Calendar, Send, Loader2, FileText } from 'lucide-react'
+import {
+  FadeInSection,
+  StaggerContainer,
+  StaggerItem,
+  AnimatedCounter,
+  MotionButton,
+} from '../components/motion'
 
 const SellerProfile = () => {
   const { id } = useParams()
   const { user } = useAuth()
   const [seller, setSeller] = useState(null)
-  const [slots, setSlots] = useState([])
+  const [bookingDate, setBookingDate] = useState('')
+  const [bookingTime, setBookingTime] = useState('')
   const [reviews, setReviews] = useState([])
   const [average, setAverage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [bookingMessage, setBookingMessage] = useState('')
-  const [selectedSlot, setSelectedSlot] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [paymentLoading, setPaymentLoading] = useState(false)
-const [paymentSuccess, setPaymentSuccess] = useState('')
-const [paymentError, setPaymentError] = useState('')
-
-
-//   URL has seller ID (e.g. /seller/abc123)
-//         ↓
-// useEffect runs → 3 API calls fire at the SAME TIME (Promise.all)
-//         ↓
-// GET /users/:id       → seller's name, bio, skills, rate
-// GET /availability/:id → seller's open time slots
-// GET /reviews/:id     → reviews + average rating
+  const [paymentSuccess, setPaymentSuccess] = useState('')
+  const [paymentError, setPaymentError] = useState('')
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [sellerRes, slotsRes, reviewsRes] = await Promise.all([
+        const [sellerRes, reviewsRes] = await Promise.all([
           api.get(`/users/${id}`),
-          api.get(`/availability/${id}`),
           api.get(`/reviews/${id}`)
         ])
         setSeller(sellerRes.data)
-        setSlots(slotsRes.data)
         setReviews(reviewsRes.data.reviews)
         setAverage(reviewsRes.data.average)
       } catch (err) {
@@ -51,217 +48,410 @@ const [paymentError, setPaymentError] = useState('')
     fetchAll()
   }, [id])
 
+  const handleBooking = async () => {
+    if (!bookingDate || !bookingTime) return setError('Please select a date and time')
+    setBookingLoading(true)
+    setError('')
+    setSuccess('')
 
-const handleBooking = async () => {
-  if (!selectedSlot) return setError('Please select a slot first')
-  setBookingLoading(true)
-  setError('')
-  setSuccess('')
+    try {
+      const bookingRes = await api.post('/bookings', {
+        sellerId: id,
+        bookingDate,
+        bookingTime,
+        message: bookingMessage
+      })
 
-  try {
-    // Step 1 — Create booking
-    const bookingRes = await api.post('/bookings', {
-      sellerId: id,
-      slotId: selectedSlot,
-      message: bookingMessage
-    })
+      const bookingId = bookingRes.data.booking._id
+      const orderRes = await api.post('/payments/create-order', { bookingId })
+      const { orderId, amount, currency } = orderRes.data
 
-    const bookingId = bookingRes.data.booking._id
+      setBookingLoading(false)
 
-    // Step 2 — Create Razorpay order
-    const orderRes = await api.post('/payments/create-order', { bookingId })
-
-    const { orderId, amount, currency } = orderRes.data
-
-    setBookingLoading(false)
-
-    // Step 3 — Open Razorpay checkout popup
-    openRazorpayCheckout({
-      orderId,
-      amount,
-      currency,
-      name: user?.name,
-      description: `Session with ${seller.name}`,
-      onSuccess: async ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
-        try {
-          setPaymentLoading(true)
-
-          // Step 4 — Send to backend for verification
-          await api.post('/payments/verify', {
-            razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature,
-            bookingId
-          })
-
-          setPaymentSuccess('Payment successful! Your session is confirmed.')
-          setSlots(slots.filter(s => s._id !== selectedSlot))
-          setSelectedSlot(null)
-          setBookingMessage('')
-        } catch (err) {
-          setPaymentError('Payment verification failed. Contact support.')
-        } finally {
-          setPaymentLoading(false)
+      openRazorpayCheckout({
+        orderId,
+        amount,
+        currency,
+        name: user?.name,
+        description: `Session with ${seller.name}`,
+        onSuccess: async ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+          try {
+            setPaymentLoading(true)
+            await api.post('/payments/verify', {
+              razorpayOrderId,
+              razorpayPaymentId,
+              razorpaySignature,
+              bookingId
+            })
+            setPaymentSuccess('Payment successful! Your session is confirmed.')
+            setBookingDate('')
+            setBookingTime('')
+            setBookingMessage('')
+          } catch (err) {
+            setPaymentError('Payment verification failed. Contact support.')
+          } finally {
+            setPaymentLoading(false)
+          }
+        },
+        onFailure: (msg) => {
+          setError(msg || 'Payment failed')
         }
-      },
-      onFailure: (msg) => {
-        setError(msg || 'Payment failed')
-      }
-    })
+      })
 
-  } catch (err) {
-    setError(err.response?.data?.message || 'Something went wrong')
-    setBookingLoading(false)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong')
+      setBookingLoading(false)
+    }
   }
-}
 
+  // ─── Skeleton Loading State ───
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Loading...</p>
+    <div className="page">
+      <div className="page-container page-container--mid">
+        {/* Hero skeleton */}
+        <div
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            borderBottom: '1px solid var(--color-border-subtle)',
+            padding: '2.5rem',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div className="skeleton" style={{ width: 64, height: 64, borderRadius: '50%', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div className="skeleton" style={{ width: 200, height: 24, marginBottom: 10 }} />
+              <div className="skeleton" style={{ width: 140, height: 12, marginBottom: 8 }} />
+              <div className="skeleton" style={{ width: 100, height: 14 }} />
+            </div>
+          </div>
+          <div className="skeleton" style={{ width: '100%', height: 14, marginBottom: 8 }} />
+          <div className="skeleton" style={{ width: '70%', height: 14, marginBottom: '1rem' }} />
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className="skeleton" style={{ width: 70, height: 24 }} />
+            ))}
+          </div>
+        </div>
+        {/* Cards skeleton */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="seller-detail-grid">
+          <div className="card">
+            <div className="skeleton" style={{ width: 160, height: 20, marginBottom: '1.25rem' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="skeleton" style={{ height: 60 }} />
+              ))}
+            </div>
+          </div>
+          <div className="card">
+            <div className="skeleton" style={{ width: 120, height: 20, marginBottom: '1.25rem' }} />
+            {[1, 2].map(i => (
+              <div key={i} style={{ marginBottom: '1rem' }}>
+                <div className="skeleton" style={{ width: '100%', height: 14, marginBottom: 6 }} />
+                <div className="skeleton" style={{ width: '60%', height: 12 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .seller-detail-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 
   if (!seller) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-gray-400">Seller not found</p>
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9375rem' }}>Seller not found</p>
     </div>
   )
 
+  const totalAmount = seller ? Math.max(1, Math.round((seller.hourlyRate || 0) * ((seller.sessionDuration || 60) / 60))) : 0;
+
   return (
-    <div className="min-h-screen bg-gray-950 px-4 py-10">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="page">
+      <div className="page-container page-container--mid">
 
-        {/* Seller Info Card */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-              {seller.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-white text-2xl font-bold">{seller.name}</h1>
-              <p className="text-gray-400 text-sm">{seller.email}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-yellow-400 text-sm">★ {average}</span>
-                <span className="text-gray-500 text-sm">({reviews.length} reviews)</span>
+        {/* Seller Hero */}
+        <FadeInSection>
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              borderBottom: '1px solid var(--color-border-subtle)',
+              padding: '2.5rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div
+                className="avatar avatar--lg"
+                style={{ border: '2px solid var(--color-accent)' }}
+              >
+                {seller.avatar ? (
+                  <img src={seller.avatar} alt={seller.name} />
+                ) : (
+                  seller.name.charAt(0).toUpperCase()
+                )}
               </div>
-            </div>
-          </div>
-
-          <p className="text-gray-300 mb-4">{seller.bio || 'No bio yet'}</p>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            {seller.skills.map((skill, i) => (
-              <span key={i} className="bg-blue-500/10 text-blue-400 text-xs px-3 py-1 rounded-full">
-                {skill}
-              </span>
-            ))}
-          </div>
-
-          <p className="text-white font-semibold">
-            {seller.hourlyRate ? `₹${seller.hourlyRate}/hr` : 'Rate not set'}
-          </p>
-        </div>
-
-        {/* Booking Section — only show to buyers */}
-        {user?.role === 'buyer' && (
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <h2 className="text-white text-xl font-semibold mb-4">Book a Session</h2>
-
-            {success && (
-              <div className="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-lg mb-4 text-sm">
-                {success}
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
-                {error}
-              </div>
-            )}
-
-            {paymentSuccess && (
-            <div className="bg-green-500/10 border border-green-500 text-green-400 px-4 py-3 rounded-lg mb-4 text-sm">
-                    {paymentSuccess}
-            </div>
-            )}
-            {paymentError && (
-           <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm">
-           {paymentError}
-           </div>
-           )}
-           {paymentLoading && (
-          <p className="text-blue-400 text-sm mb-4">Verifying payment...</p>
-           )}
-
-            {slots.length === 0 ? (
-              <p className="text-gray-400">No available slots right now</p>
-            ) : (
-              <>
-                <p className="text-gray-400 text-sm mb-3">Select an available slot:</p>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {slots.map(slot => (
-                    <div
-                      key={slot._id}
-                      onClick={() => setSelectedSlot(slot._id)}
-                      className={`p-3 rounded-lg border cursor-pointer transition text-sm
-                        ${selectedSlot === slot._id
-                          ? 'border-blue-500 bg-blue-500/10 text-white'
-                          : 'border-gray-700 text-gray-400 hover:border-gray-500'
-                        }`}
-                    >
-                      <p className="font-medium">{slot.day}</p>
-                      <p>{slot.startTime} - {slot.endTime}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <textarea
-                  rows={3}
-                  placeholder="Add a message to the seller (optional)"
-                  value={bookingMessage}
-                  onChange={(e) => setBookingMessage(e.target.value)}
-                  className="w-full bg-gray-800 text-white px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
-                />
-
-                <button
-                  onClick={handleBooking}
-                  disabled={bookingLoading || !selectedSlot}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+              <div style={{ flex: 1 }}>
+                <h1
+                  style={{
+                    fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+                    fontWeight: 800,
+                    color: 'var(--color-text-primary)',
+                    letterSpacing: '-0.02em',
+                    marginBottom: '0.375rem',
+                  }}
                 >
-                  {bookingLoading ? 'Booking...' : 'Confirm Booking'}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Reviews Section */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <h2 className="text-white text-xl font-semibold mb-4">
-            Reviews {reviews.length > 0 && `(${reviews.length})`}
-          </h2>
-
-          {reviews.length === 0 ? (
-            <p className="text-gray-400">No reviews yet</p>
-          ) : (
-            <div className="space-y-4">
-              {reviews.map(review => (
-                <div key={review._id} className="border-b border-gray-800 pb-4 last:border-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-                      {review.reviewer.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-white text-sm font-medium">{review.reviewer.name}</span>
-                    <span className="text-yellow-400 text-sm ml-auto">{'★'.repeat(review.rating)}</span>
+                  {seller.name}
+                </h1>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  {seller.email}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <Star size={14} fill="var(--color-warning)" style={{ color: 'var(--color-warning)' }} />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                      <AnimatedCounter value={average} duration={0.8} />
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      (<AnimatedCounter value={reviews.length} duration={0.6} /> reviews)
+                    </span>
                   </div>
-                  <p className="text-gray-400 text-sm">{review.comment}</p>
+                  <span
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      color: 'var(--color-accent)',
+                    }}
+                  >
+                    {seller.hourlyRate ? `₹${seller.hourlyRate}/hr` : 'Rate not set'}
+                  </span>
                 </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1rem' }}>
+              {seller.bio || 'No bio yet'}
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: seller.portfolio ? '1rem' : '0' }}>
+              {seller.skills.map((skill, i) => (
+                <span key={i} className="tag">{skill}</span>
               ))}
             </div>
-          )}
-        </div>
+            
+            {seller.portfolio && (
+              <a
+                href={seller.portfolio}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.8125rem',
+                  padding: '0.5rem 1rem',
+                  textDecoration: 'none'
+                }}
+              >
+                <FileText size={14} style={{ color: 'var(--color-accent)' }} />
+                View Portfolio / Resume
+              </a>
+            )}
+          </div>
+        </FadeInSection>
 
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1.5rem',
+          }}
+          className="seller-detail-grid"
+        >
+
+          {/* Booking Section — only show to buyers */}
+          {user?.role === 'buyer' && (
+            <FadeInSection delay={0.1}>
+              <div className="card">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '1.25rem',
+                  }}
+                >
+                  <Calendar size={18} style={{ color: 'var(--color-accent)' }} />
+                  <h2 className="heading-md">Book a Session</h2>
+                </div>
+
+                {success && <div className="alert alert--success">{success}</div>}
+                {error && <div className="alert alert--error">{error}</div>}
+                {paymentSuccess && <div className="alert alert--success">{paymentSuccess}</div>}
+                {paymentError && <div className="alert alert--error">{paymentError}</div>}
+                {paymentLoading && (
+                  <div
+                    className="alert alert--info"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <Loader2 size={14} className="animate-spin-slow" />
+                    Verifying payment...
+                  </div>
+                )}
+
+                    <div style={{ marginBottom: '1.25rem', padding: '1rem', backgroundColor: 'var(--color-surface-raised)', borderRadius: '0.75rem', border: '1px solid var(--color-border-subtle)' }}>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+                        Session Duration
+                      </p>
+                      <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                        {seller?.sessionDuration || 60} minutes
+                      </p>
+                    </div>
+
+                    <p className="input-label" style={{ marginBottom: '0.75rem' }}>Select Date & Time</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                      <input 
+                        type="date" 
+                        value={bookingDate} 
+                        onChange={(e) => setBookingDate(e.target.value)} 
+                        className="input-field input-field--boxed" 
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <input 
+                        type="time" 
+                        value={bookingTime} 
+                        onChange={(e) => setBookingTime(e.target.value)} 
+                        className="input-field input-field--boxed" 
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <textarea
+                        rows={3}
+                        placeholder="Add a message to the seller (optional)"
+                        value={bookingMessage}
+                        onChange={(e) => setBookingMessage(e.target.value)}
+                        className="input-field input-field--boxed"
+                        style={{ fontSize: '0.8125rem' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', padding: '1rem', backgroundColor: 'var(--color-surface-raised)', borderRadius: '0.75rem', border: '1px solid var(--color-border-subtle)' }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Amount</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-accent)' }}>₹{totalAmount}</span>
+                    </div>
+
+                    <MotionButton
+                      onClick={handleBooking}
+                      disabled={bookingLoading || !bookingDate || !bookingTime}
+                      className="btn btn-primary"
+                      style={{ width: '100%' }}
+                      hoverScale={1.04}
+                      tapScale={0.97}
+                    >
+                      {bookingLoading ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="spinner spinner--sm" />
+                          Booking...
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Send size={14} />
+                          Confirm Booking
+                        </span>
+                      )}
+                    </MotionButton>
+              </div>
+            </FadeInSection>
+          )}
+
+          {/* Reviews Section */}
+          <FadeInSection delay={0.15} style={{ gridColumn: user?.role !== 'buyer' ? 'span 2' : undefined }}>
+            <div className="card" style={{ gridColumn: user?.role !== 'buyer' ? 'span 2' : undefined }}>
+              <h2 className="heading-md" style={{ marginBottom: '1.25rem' }}>
+                Reviews {reviews.length > 0 && `(${reviews.length})`}
+              </h2>
+
+              {reviews.length === 0 ? (
+                <p className="text-caption">No reviews yet</p>
+              ) : (
+                <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {reviews.map(review => (
+                    <StaggerItem key={review._id}>
+                      <div
+                        style={{
+                          borderBottom: '1px solid var(--color-border-subtle)',
+                          paddingBottom: '1rem',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '0.5rem',
+                          }}
+                        >
+                          <div className="avatar avatar--sm">
+                            {review.reviewer.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              color: 'var(--color-text-primary)',
+                            }}
+                          >
+                            {review.reviewer.name}
+                          </span>
+                          <div
+                            style={{
+                              marginLeft: 'auto',
+                              display: 'flex',
+                              gap: '0.125rem',
+                            }}
+                          >
+                            {Array.from({ length: review.rating }).map((_, i) => (
+                              <Star
+                                key={i}
+                                size={12}
+                                fill="var(--color-warning)"
+                                style={{ color: 'var(--color-warning)' }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                          {review.comment}
+                        </p>
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </StaggerContainer>
+              )}
+            </div>
+          </FadeInSection>
+        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .seller-detail-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .seller-detail-grid > .card {
+            grid-column: span 1 !important;
+          }
+          .slot-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

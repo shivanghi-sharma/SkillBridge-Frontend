@@ -1,6 +1,6 @@
 //This is a reusable helper that opens the Razorpay payment popup
 
-export const openRazorpayCheckout = ({orderId , amount , currency , name , description , onSucess , onFailure }) => {
+export const openRazorpayCheckout = ({orderId , amount , currency , name , description , onSuccess , onFailure }) => {
     const options = {
         key : import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount,

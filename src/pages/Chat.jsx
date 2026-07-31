@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import api from '../api/axios'
+import { Send, MessageSquare } from 'lucide-react'
+import { AnimatePresence, motion, MotionButton } from '../components/motion'
 
 const Chat = () => {
   const { bookingId } = useParams()
@@ -100,80 +102,212 @@ const Chat = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div
+      className="page"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+      }}
+    >
 
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-4">
-        <h1 className="text-white font-semibold">Session Chat</h1>
-        <p className="text-gray-400 text-xs mt-1">Booking ID: {bookingId}</p>
+      <div
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderBottom: '1px solid var(--color-border-subtle)',
+          padding: '1rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+        }}
+      >
+        <MessageSquare size={18} style={{ color: 'var(--color-accent)' }} />
+        <div>
+          <h1
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            Session Chat
+          </h1>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '1.5rem',
+        }}
+      >
         {messages.length === 0 && (
-          <p className="text-gray-500 text-center text-sm">
-            No messages yet. Say hello! 👋
-          </p>
-        )}
-
-        {messages.map((msg, i) => {
-          const isMe = msg.sender._id === user?._id || msg.sender === user?._id
-          return (
-            <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl text-sm
-                ${isMe
-                  ? 'bg-blue-600 text-white rounded-br-none'
-                  : 'bg-gray-800 text-gray-200 rounded-bl-none'
-                }`}
-              >
-                {!isMe && (
-                  <p className="text-blue-400 text-xs font-medium mb-1">
-                    {msg.sender.name}
-                  </p>
-                )}
-                <p>{msg.text}</p>
-                <p className={`text-xs mt-1 ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Typing indicator */}
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-none">
-              <div className="flex gap-1 items-center">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
+          <div className="empty-state" style={{ padding: '3rem 2rem' }}>
+            <MessageSquare size={32} className="empty-state__icon" />
+            <p className="empty-state__title">No messages yet</p>
+            <p className="empty-state__text">Start the conversation</p>
           </div>
         )}
 
-        <div ref={bottomRef} />
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.625rem',
+            maxWidth: 720,
+            margin: '0 auto',
+          }}
+        >
+          <AnimatePresence initial={false}>
+          {messages.map((msg, i) => {
+            const isMe = msg.sender._id === user?._id || msg.sender === user?._id
+            return (
+              <motion.div
+                key={msg._id || i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                style={{
+                  display: 'flex',
+                  justifyContent: isMe ? 'flex-end' : 'flex-start',
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: '70%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.875rem',
+                    lineHeight: 1.5,
+                    backgroundColor: isMe
+                      ? 'var(--color-accent)'
+                      : 'var(--color-surface-raised)',
+                    color: isMe
+                      ? 'var(--color-text-inverse)'
+                      : 'var(--color-text-primary)',
+                    borderLeft: isMe ? 'none' : '3px solid var(--color-border)',
+                  }}
+                >
+                  {!isMe && (
+                    <p
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        color: 'var(--color-accent)',
+                        marginBottom: '0.25rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {msg.sender.name}
+                    </p>
+                  )}
+                  <p>{msg.text}</p>
+                  <p
+                    style={{
+                      fontSize: '0.6875rem',
+                      marginTop: '0.375rem',
+                      color: isMe
+                        ? 'rgba(10, 10, 11, 0.6)'
+                        : 'var(--color-text-muted)',
+                    }}
+                  >
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </motion.div>
+            )
+          })}
+          </AnimatePresence>
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div
+                style={{
+                  backgroundColor: 'var(--color-surface-raised)',
+                  padding: '0.75rem 1rem',
+                  borderLeft: '3px solid var(--color-border)',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      backgroundColor: 'var(--color-text-muted)',
+                      borderRadius: '50%',
+                      animation: 'pulse-subtle 1s ease-in-out infinite',
+                    }}
+                  />
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      backgroundColor: 'var(--color-text-muted)',
+                      borderRadius: '50%',
+                      animation: 'pulse-subtle 1s ease-in-out infinite',
+                      animationDelay: '0.15s',
+                    }}
+                  />
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      backgroundColor: 'var(--color-text-muted)',
+                      borderRadius: '50%',
+                      animation: 'pulse-subtle 1s ease-in-out infinite',
+                      animationDelay: '0.3s',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div className="bg-gray-900 border-t border-gray-800 px-4 py-4">
-        <div className="flex items-center gap-3 max-w-4xl mx-auto">
+      <div
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderTop: '1px solid var(--color-border-subtle)',
+          padding: '1rem 1.5rem',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            maxWidth: 720,
+            margin: '0 auto',
+          }}
+        >
           <input
             type="text"
             value={text}
             onChange={handleTyping}
             onKeyDown={handleKeyDown}
             placeholder="Type a message... (Enter to send)"
-            className="flex-1 bg-gray-800 text-white px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="input-field input-field--boxed"
+            style={{ fontSize: '0.875rem' }}
           />
-          <button
+          <MotionButton
             onClick={sendMessage}
             disabled={!text.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl transition disabled:opacity-50 text-sm font-medium"
+            className="btn btn-primary"
+            style={{ padding: '0.625rem 1rem', flexShrink: 0 }}
+            aria-label="Send message"
+            hoverScale={1.06}
+            tapScale={0.94}
           >
-            Send
-          </button>
+            <Send size={16} />
+          </MotionButton>
         </div>
       </div>
 

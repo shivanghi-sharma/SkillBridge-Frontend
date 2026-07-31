@@ -20,13 +20,13 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   withCredentials: true  // sends cookies automatically (needed for refresh token)
 })
 
 // Request interceptor — attach access token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
+  const token = sessionStorage.getItem('accessToken')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -46,21 +46,21 @@ api.interceptors.response.use(
       try {
         // Ask for a new access token using refresh token (sent via cookie)
         const res = await axios.post(
-          'http://localhost:5000/api/auth/refresh',
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh`,
           {},
           { withCredentials: true }
         )
 
         const newToken = res.data.accessToken
-        localStorage.setItem('accessToken', newToken)
+        sessionStorage.setItem('accessToken', newToken)
 
         // Retry the original request with new token
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         return api(originalRequest)
 
-      } catch (err) {
+      } catch {
         // Refresh token also expired — force logout
-        localStorage.removeItem('accessToken')
+        sessionStorage.removeItem('accessToken')
         window.location.href = '/login'
       }
     }
